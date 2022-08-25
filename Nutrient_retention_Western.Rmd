@@ -1,0 +1,128 @@
+---
+title: "Project: Drivers of nutrient retention in Western US lakes"
+author: "Carolina Barbosa"
+date: '2022-08-25'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+## Goal of this project
+
+Building a prediction model based on some covariates (e.g. ice dynamics, watershed characteristics, trophic state) of nutrient retention in Western lakes and predict trends based on climate change scenarios using machine learning approaches.
+
+Questions: How strong are nutrient internal cycles in the Western lakes? Is the dry weather a driver of nutrient retention? Can climate change alter that?
+
+Datasets: We will use available temporal and spatial datasets (e.g. LAGOS, EPA, HydroLAKES, EDI and others)
+
+
+```{r loading packages, echo=FALSE, message=FALSE, warning=FALSE, include=FALSE}
+library(ncdf4)
+library(chron)
+library(reshape2)
+library(lubridate)
+library(arsenal)
+library(gridExtra)
+library(ggmap)
+library(maps)
+library(raster)
+library(sf)
+library(rgdal)
+library(tidyverse)
+```
+
+At first, I have filtered and compared data of US Western lakes from LAGOS-LOCUS, LAGOS-GEO, EPA-NLA2012 and Wu et al.(2022).
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, include=FALSE}
+source("scripts/getting_data.R")
+```
+
+```{r, echo=TRUE, message=FALSE, warning=FALSE, include=FALSE}
+epa_nla <- epa_nla %>%
+  rename(ID=SITE_ID) 
+
+wu_epa_nla <- inner_join(epa_nla, wu_nla, by = "ID")
+
+wu_epa_nla <- wu_epa_nla%>%
+  group_by(VISIT_NO=1)
+
+#filtering only interest variables
+wu_epa_nla <- wu_epa_nla %>%
+  dplyr::select(ID, UID, AREA_HA,CAT_UNIQUE, CH0712_CAT, COMID2012, NARS_NAME, Area, Chla, TNmean, TPmean, N_Load, N_EN, N_DE, N_Outflow, P_Load, P_EN, P_DE, P_Outflow)
+
+lagos_ids <- inner_join(lagos_locus, lagos_info, by = "lagoslakeid")
+
+lagos_ids <- lagos_ids %>%
+  rename(COMID2012 = nhdplusv2_comid) 
+
+wu_epa_nla_LAGOS_locus <- inner_join(lagos_ids, wu_epa_nla, by = "COMID2012")
+
+lagos_geo <- lagos_geo %>%
+  rename(lagoslakeid = buff100_zoneid) 
+
+wu_epa_nla_LAGOS_locus_geo <- st_intersection(lagos_geo, wu_epa_nla_LAGOS_locus, by = "lagoslakeid")
+names(wu_epa_nla_LAGOS_locus_geo)
+
+#remove ID duplicate rows
+wu_epa_nla_LAGOS_locus_geo_2 <- wu_epa_nla_LAGOS_locus_geo[!duplicated(wu_epa_nla_LAGOS_locus_geo$COMID2012), ]
+
+#getting only interest variable at this moment
+wu_epa_nla_LAGOS_locus_geo_2 <- wu_epa_nla_LAGOS_locus_geo_2 %>%
+  dplyr::select(lagoslakeid, Shape_Length, Shape_Area, lake_namelagos, lake_centroidstate, lake_lon_decdeg, lake_lat_decdeg,ID, UID, AREA_HA,CAT_UNIQUE, CH0712_CAT, COMID2012, NARS_NAME, Area, Chla, TNmean, TPmean, N_Load, N_EN, N_DE, N_Outflow, P_Load, P_EN, P_DE, P_Outflow)
+
+
+```
+
+## Checking nutrient retention data 
+
+I have decided to filter only nutrient retention data from Wu et al (2022) at first.
+
+```{r, echo=TRUE, message=FALSE, warning=FALSE}
+wu_epa_nla_LAGOS_locus_geo_2 <- wu_epa_nla_LAGOS_locus_geo_2 %>%
+  group_by(lagoslakeid, lake_lat_decdeg, lake_lon_decdeg, P_DE, P_EN, N_DE, N_EN) %>%
+  mutate(lakes_en_de_ratioP = (P_EN/P_DE), lakes_en_de_ratioN = (N_EN/N_DE))%>%
+  summarize(RetainP_lakes= lakes_en_de_ratioP<1,RetainN_lakes= lakes_en_de_ratioN<1 )
+
+N_retain_lakes <- wu_epa_nla_LAGOS_locus_geo_2 %>%
+  filter(RetainN_lakes=="TRUE") %>%
+  summarize(lagoslakeid)
+
+P_retain_lakes <- wu_epa_nla_LAGOS_locus_geo_2 %>%
+  filter(RetainP_lakes=="TRUE") %>%
+  summarize(lagoslakeid)
+```
+
+Let's check some plots of Western US lakes with N and P retention.
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+ggplot()+
+  geom_sf(data=N_retain_lakes, size=3, color="blue")+
+  geom_sf(data=P_retain_lakes, size=2, color="brown")+
+  ggtitle("Lakes with N (blue) and P (brown) retention")+
+  labs(color="N and P")+
+  coord_sf()
+
+ggmap(get_stamenmap(bbox=c(-125, 25, -100, 50), zoom = 5, 
+                    maptype='toner'))+
+  geom_point(data = N_retain_lakes, aes(x = lake_lon_decdeg, y = lake_lat_decdeg ),color="blue", size= 3, shape=21)+
+  geom_point(data = P_retain_lakes, aes(x = lake_lon_decdeg, y = lake_lat_decdeg ),color="brown", size= 1, shape=15)+
+  ggtitle("Lakes with N (blue circles) and P (brown rectangles) retention ")+
+  theme_classic()
+```
+
+Why some lakes retain N and don't retain P and vice versa? Let's see those.
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+interesting_lakes <- wu_epa_nla_LAGOS_locus_geo_2 %>%
+  summarise(dif_lakes = RetainP_lakes != RetainN_lakes) %>%
+  filter(dif_lakes == "TRUE")
+ 
+ggmap(get_stamenmap(bbox=c(-125, 25, -100, 50), zoom = 5, 
+                    maptype='toner'))+
+  geom_point(data = interesting_lakes, aes(x = lake_lon_decdeg, y = lake_lat_decdeg ),color="purple", size= 3, shape=21)+
+  ggtitle("Lakes with different N and P retention dynamic")+
+  theme_classic()
+```
+
+Important question: should I investigate the lakes with N and/or P retention? Or should I investigate these lakes with different internal N and P dynamics?? 
