@@ -126,3 +126,79 @@ ggmap(get_stamenmap(bbox=c(-125, 25, -100, 50), zoom = 5,
 ```
 
 Important question: should I investigate the lakes with N and/or P retention? Or should I investigate these lakes with different internal N and P dynamics?? 
+
+## Looking at some snow data from Lute et al. 2022
+
+Let's compare the snow duration data averaged between 2000 and 2013 and the location of the lakes 
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+snow_duration <- nc_open("C:/Users/cbarbosa/Dropbox/doi_10.6071_M3WM3G__v5/snow_duration_CTRL.nc")
+
+{
+    sink('data/snow_duration_CTRL.txt')
+ print(snow_duration)
+    sink()
+}
+
+print(paste("The file has",snow_duration$nvars,"variables,",snow_duration$ndims,"dimensions and",snow_duration$natts,"NetCDF attributes"))
+
+snow_duration
+
+#The variables are: lat-lon, and snow_duration
+
+#retrieve a matrix of the snow duration
+
+#snow_duration2 <- ncvar_get(snow_duration, attributes(snow_duration$var)$names[2]) #%>%
+  
+#dim(snow_duration2)
+
+#dimensions are 11831 X 10802
+
+attributes(snow_duration$dim)
+
+#attributes are lat and lon; I'm going to want both to add to the snow duration matrix
+
+lat <- ncvar_get(snow_duration, "lat", verbose = F)
+
+lon <- ncvar_get(snow_duration, "lon")
+
+snow_dur.array <- ncvar_get(snow_duration, "snow_duration")
+
+#missing data info
+fillvalue <- ncatt_get(snow_duration, "snow_duration", "_FillValue")
+fillvalue
+
+#The fill value is -9999
+
+nc_close(snow_duration) #close netcdf file
+
+snow_dur.array[snow_dur.array == fillvalue$value] <- NA
+
+#snow_dur.slice <- snow_dur.array[500,] 
+#dim(snow_dur.slice)
+
+r1 <- raster(t(snow_dur.array), xmn=min(lon), xmx=max(lon), ymn=min(lat), ymx=max(lat), crs=CRS("+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs+ towgs84=0,0,0"))
+
+r1 <- flip(r1, direction='y')
+plot(r1)
+
+r1.df <- as.data.frame(r1, xy=TRUE)
+
+
+ggplot() + 
+  geom_raster(data = r1.df, aes(x = x, y=y, fill= layer)) +
+  scale_fill_viridis_c()+
+  coord_quickmap()
+
+#ggmap(get_stamenmap(bbox=c(-125, 25, -100, 50), zoom = 5, 
+ #                   maptype='toner'))+
+ggplot()+
+  geom_raster(data = r1.df, aes(x = x, y=y, fill= layer)) +
+  scale_fill_viridis_c()+
+    geom_point(data = N_retain_lakes, aes(x = lake_lon_decdeg, y = lake_lat_decdeg ),color="blue", size= 3, shape=21)+
+  geom_point(data = P_retain_lakes, aes(x = lake_lon_decdeg, y = lake_lat_decdeg ),color="brown", size= 1, shape=15)+
+  ggtitle("Snow duration in days averaged across years 2000-2013 and lakes with N (blue circles) and P (brown rectangles) retention ")+
+    coord_quickmap()
+```
+
+

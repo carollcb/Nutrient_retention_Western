@@ -1,0 +1,49 @@
+File C:/Users/cbarbosa/Dropbox/doi_10.6071_M3WM3G__v5/snow_duration_CTRL.nc (NC_FORMAT_NETCDF4):
+
+     2 variables (excluding dimension variables):
+        unsigned short crs[]   (Contiguous storage)  
+            grid_mapping_name: latitude_longitude
+            longitude_of_prime_meridian: 0
+            semi_major_axis: 6378137
+            long_name: WGS 84
+            inverse_flattening: 298.257223563
+            GeoTransform: -125.0006944447781 0.0019444444438 0 50.0006944377781 0 -0.0019444444439
+            spatial_ref: GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9122"]],AUTHORITY["EPSG","4326"]]
+            units: degree
+        float snow_duration[lon,lat]   (Chunking: [986,901])  (Compression: level 9)
+            _FillValue: -9999
+            dimensions: lon lat
+            coordinates: lon lat
+            standard_name: number_of_days_between_snowcover_start_and_end
+            longname: Snow duration (days)
+            units: days
+            description: Number of days between the start and end of snowcover, averaged across years. The start of snowcover is defined as the first day of the first period of 5 consecutive days with snow depth greater than 10mm, and day of snowcover end is defined as the last day of the last period of 5 consecutive days with snow depth greater than 10mm. Values are calculated for the time period 1 Oct 2000 - 30 Sep 2013.
+            coordinate_system: WGS84,EPSG:4326
+            missing_value: -9999
+            grid_mapping: crs
+
+     2 dimensions:
+        lat  Size:10802 
+            units: degrees_north
+            long_name: latitude
+            description: Latitude of the center of the grid cell
+            standard_name: latitude
+            axis: Y
+        lon  Size:11831 
+            units: degrees_east
+            long_name: longitude
+            description: Longitude of the center of the grid cell
+            standard_name: longitude
+            axis: X
+
+    10 global attributes:
+        creation_date: 28-Feb-2022 22:18:28
+        authors: A.C. Lute, John Abatzoglou, and Tim Link
+        coordinate_reference_system: +proj=longlat +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +no_defs 
+        geospatial_bounds: POLYGON((-125.000694 50.000694, -125.000694 28.998750, -101.997917 28.998750, -101.997917 50.000694, -125.000694 50.000694))
+        geospatial_lon_resolution: 0.0019444
+        geospatial_lat_resolution: 0.0019444
+        geospatial_lon_min: -125.0007
+        geospatial_lon_max: -101.9979
+        geospatial_lat_min: 28.9987
+        geospatial_lat_max: 50.0007
